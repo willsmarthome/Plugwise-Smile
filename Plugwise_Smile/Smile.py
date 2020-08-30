@@ -35,7 +35,7 @@ HOME_MEASUREMENTS = {
     "electricity_produced": "power",
     "gas_consumed": "gas",
     # Outdoor temp as reported on the Anna, in the App
-    "outdoor_temperature": "temperature"
+    "outdoor_temperature": "temperature",
 }
 
 # Excluded:
@@ -74,25 +74,51 @@ DEVICE_MEASUREMENTS = {
     # Next  3 keys are used to show the state of the heater used next to the Elga heatpump - marcelveldt
     "slave_boiler_state": "slave_boiler_state",
     "compressor_state": "compressor_state",
-    "flame_state": "flame_state"
+    "flame_state": "flame_state",
 }
 
 SMILES = {
-    "smile_open_therm_v30": {"type": "thermostat", "friendly_name": "Adam",},
-    "smile_open_therm_v23": {"type": "thermostat", "friendly_name": "Adam",},
-    "smile_thermo_v40": {"type": "thermostat", "friendly_name": "Anna",},
-    "smile_thermo_v31": {"type": "thermostat", "friendly_name": "Anna",},
+    "smile_open_therm_v30": {
+        "type": "thermostat",
+        "friendly_name": "Adam",
+    },
+    "smile_open_therm_v23": {
+        "type": "thermostat",
+        "friendly_name": "Adam",
+    },
+    "smile_thermo_v40": {
+        "type": "thermostat",
+        "friendly_name": "Anna",
+    },
+    "smile_thermo_v31": {
+        "type": "thermostat",
+        "friendly_name": "Anna",
+    },
     "smile_thermo_v18": {
         "type": "thermostat",
         "friendly_name": "Anna",
         "legacy": True,
     },
-    "smile_v40": {"type": "power", "friendly_name": "P1",},
-    "smile_v33": {"type": "power", "friendly_name": "P1",},
-    "smile_v25": {"type": "power", "friendly_name": "P1", "legacy": True,},
-    "smile_v21": {"type": "power", "friendly_name": "P1", "legacy": True,},
-    "stretch_v31" : {"type": "stretch_v3", "friendly_name": "Stretch", "legacy": True},
-    "stretch_v23" : {"type": "stretch_v2", "friendly_name": "Stretch", "legacy": True}
+    "smile_v40": {
+        "type": "power",
+        "friendly_name": "P1",
+    },
+    "smile_v33": {
+        "type": "power",
+        "friendly_name": "P1",
+    },
+    "smile_v25": {
+        "type": "power",
+        "friendly_name": "P1",
+        "legacy": True,
+    },
+    "smile_v21": {
+        "type": "power",
+        "friendly_name": "P1",
+        "legacy": True,
+    },
+    "stretch_v31": {"type": "stretch_v3", "friendly_name": "Stretch", "legacy": True},
+    "stretch_v23": {"type": "stretch_v2", "friendly_name": "Stretch", "legacy": True},
 }
 
 
@@ -125,8 +151,8 @@ class Smile:
             self.websession = websession
 
         self._auth = aiohttp.BasicAuth(username, password=password)
-        ### Work-around for Stretchv2-aiohttp-deflate-error, can be removed for aiohttp v3.7:
-        self._headers={'Accept-Encoding': 'gzip'}
+        # Work-around for Stretchv2-aiohttp-deflate-error, can be removed for aiohttp v3.7
+        self._headers = {"Accept-Encoding": "gzip"}
 
         self._timeout = timeout
         self._endpoint = f"http://{host}:{str(port)}"
@@ -148,14 +174,17 @@ class Smile:
 
     async def connect(self):
         """Connect to Plugwise device."""
-        #pylint: disable=too-many-return-statements
+        #pylint: disable=too-many-return-statements,raise-missing-from
         names = []
+
         result = await self.request(DOMAIN_OBJECTS)
         dsmrmain = result.find(".//module/protocols/dsmrmain")
         master_controller = result.find(".//module/protocols/master_controller")
+
         vendor_names = result.findall(".//module/vendor_name")
         for name in vendor_names:
             names.append(name.text)
+
         if "Plugwise" not in names:
             if dsmrmain is None:
                 _LOGGER.error(
@@ -200,7 +229,7 @@ class Smile:
                 else:
                     _LOGGER.error("Connected but no gateway device information found")
                     raise self.ConnectionFailedError
-    
+
         if not self._smile_legacy:
             smile_model = result.find(".//gateway/vendor_model").text
             smile_version = result.find(".//gateway/firmware_version").text
@@ -245,10 +274,15 @@ class Smile:
         await self.websession.close()
 
     async def request(
-        self, command, retry=3, method="get", data=None, headers=None,
+        self,
+        command,
+        retry=3,
+        method="get",
+        data=None,
+        headers=None,
     ):
         """Request data."""
-        # pylint: disable=too-many-return-statements
+        # pylint: disable=too-many-return-statements,raise-missing-from
 
         url = f"{self._endpoint}{command}"
 
@@ -258,8 +292,10 @@ class Smile:
         try:
             with async_timeout.timeout(self._timeout):
                 if method == "get":
-                    ### Work-around, see above, can be removed for aiohttp v3.7:
-                    resp = await self.websession.get(url, auth=self._auth, headers=self._headers)
+                    # Work-around, see above, can be removed for aiohttp v3.7:
+                    resp = await self.websession.get(
+                        url, auth=self._auth, headers=self._headers
+                    )
                 if method == "put":
                     resp = await self.websession.put(
                         url, data=data, headers=headers, auth=self._auth
@@ -299,7 +335,6 @@ class Smile:
         except etree.XMLSyntaxError:
             _LOGGER.error("Smile returns invalid XML for %s", self._endpoint)
             raise self.InvalidXMLError
-            return None
 
         return xml
 
@@ -397,7 +432,7 @@ class Smile:
                 "location": home_location,
             }
             self.gateway_id = self._home_location
-            
+
             return appliances
 
         # TODO: add locations with members as appliance as well
@@ -448,8 +483,7 @@ class Smile:
             if (
                 appliance.find(".//actuator_functionalities/relay_functionality")
                 is not None
-                or
-                appliance.find(".//actuators/relay") is not None
+                or appliance.find(".//actuators/relay") is not None
             ):
                 appliance_types.add("plug")
             elif (
@@ -939,7 +973,7 @@ class Smile:
         if rule_ids is None:
             return available, selected, schedule_temperature
 
-        for rule_id, location_id in rule_ids.items():
+        for rule_id, dummy in rule_ids.items():
             active = False
             name = self._domain_objects.find(f'rule[@id="{rule_id}"]/name').text
             if (
@@ -1023,10 +1057,8 @@ class Smile:
         if rule_ids is None:
             return
 
-        for rule_id, location_id in rule_ids.items():
-            schema_name = self._domain_objects.find(
-                f'rule[@id="{rule_id}"]/name'
-            ).text
+        for rule_id, dummy in rule_ids.items():
+            schema_name = self._domain_objects.find(f'rule[@id="{rule_id}"]/name').text
             schema_date = self._domain_objects.find(
                 f'rule[@id="{rule_id}"]/modified_date'
             ).text
@@ -1159,7 +1191,7 @@ class Smile:
         if self.smile_type == "stretch_v2":
             actuator = "actuators"
             relay = "relay"
-        locator = (f'appliance[@id="{appl_id}"]/{actuator}/{relay}')
+        locator = f'appliance[@id="{appl_id}"]/{actuator}/{relay}'
         relay_functionality_id = self._appliances.find(locator).attrib["id"]
         uri = f"{APPLIANCES};id={appl_id}/relay;id={relay_functionality_id}"
         if self.smile_type == "stretch_v2":
