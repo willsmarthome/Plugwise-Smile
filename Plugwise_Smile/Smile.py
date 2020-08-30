@@ -213,19 +213,23 @@ class Smile:
             if anna is None:
                 # P1 legacy:
                 if dsmrmain is not None:
-                    status = await self.request(STATUS)
-                    if status is not None:
+                    try:
+                        status = await self.request(STATUS)
                         smile_version = status.find(".//system/version").text
                         smile_model = status.find(".//system/product").text
                         self.smile_hostname = status.find(".//network/hostname").text
+                    except self.XMLDataMissingError:
+                        status = None
 
                 # Stretch:
                 elif master_controller is not None:
-                    system = await self.request(SYSTEM)
-                    if system is not None:
+                    try:
+                        system = await self.request(SYSTEM)
                         smile_version = system.find(".//gateway/firmware").text
                         smile_model = system.find(".//gateway/product").text
                         self.smile_hostname = system.find(".//gateway/hostname").text
+                    except self.XMLDataMissingError:
+                        status = None
                 else:
                     _LOGGER.error("Connected but no gateway device information found")
                     raise self.ConnectionFailedError
